@@ -19,6 +19,27 @@ any of them back on:
 
 Still available: external OpenTelemetry aimed at your own collector (`GROK_EXTERNAL_OTEL`).
 
+## Install
+
+Prebuilt binaries for Linux (x86_64 / aarch64) and macOS (Apple Silicon) are on the
+[releases page](https://github.com/rossnoah/grok-build-no-telemetry/releases):
+
+```sh
+curl -fsSL https://github.com/rossnoah/grok-build-no-telemetry/releases/latest/download/grok-no-telemetry-aarch64-apple-darwin.tar.gz | tar xz
+./grok
+```
+
+(There's no `cargo install` path — this repo is patches, not a crate.)
+
+## CI / releases
+
+CI applies the patches and runs `cargo check` plus the fork's tests on every
+push. Pushing a `v*` tag builds release binaries and publishes them:
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
 ## Build
 
 ```sh

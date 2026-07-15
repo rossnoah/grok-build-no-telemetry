@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      # Platforms are limited to what upstream's pinned protoc wrapper
+      # (bin/protoc) supports: linux x86_64/aarch64 and macOS aarch64.
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dotslash
+        run: cargo install dotslash --locked
+
+      - name: Apply patches
+        run: ./scripts/apply-patches.sh
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: work/build
+
+      - name: Build
+        working-directory: work/build
+        run: cargo build --release -p xai-grok-pager-bin
+
+      - name: Package
+        run: |
+          mkdir dist
+          cp work/build/target/release/xai-grok-pager dist/grok
+          tar -C dist -czf "grok-no-telemetry-${{ matrix.target }}.tar.gz" grok
+          shasum -a 256 "grok-no-telemetry-${{ matrix.target }}.tar.gz" \
+            > "grok-no-telemetry-${{ matrix.target }}.tar.gz.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grok-no-telemetry-${{ matrix.target }}
+          path: grok-no-telemetry-${{ matrix.target }}.tar.gz*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # bin/protoc in the upstream tree is a dotslash wrapper pinning the
+      # exact protoc release the build expects.
+      - name: Install dotslash
+        run: cargo install dotslash --locked
+
+      - name: Apply patches
+        run: ./scripts/apply-patches.sh
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: work/build
+
+      - name: Check workspace
+        working-directory: work/build
+        run: cargo check --workspace
+
+      # Test targets are broken in the upstream drop for most crates
+      # (test-only helpers gated out); run the suites that do build —
+      # they cover the patched telemetry code.
+      - name: Test patched crates
+        working-directory: work/build
+        run: |
+          cargo test -p xai-grok-telemetry --lib
+          cargo test -p xai-mixpanel
+
+      - name: Build TUI binary
+        working-directory: work/build
+        run: cargo build -p xai-grok-pager-bin
