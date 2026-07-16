@@ -32,6 +32,22 @@ jobs:
       - name: Apply patches
         run: ./scripts/apply-patches.sh
 
+      # Tag format: v<upstream-version>+notel.<n>, e.g. v0.2.101+notel.1.
+      # The upstream version is read from the source tree itself (the
+      # highest-numbered changelog entry) and must match the tag's base.
+      - name: Resolve version from tag
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          base="${version%%+*}"
+          tree_version=$(ls work/build/crates/codegen/xai-grok-shell/changelogs/ \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.md$' | sed 's/\.md$//' \
+            | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+          if [ "$base" != "$tree_version" ]; then
+            echo "tag base $base != upstream tree version $tree_version" >&2
+            exit 1
+          fi
+          echo "GROK_VERSION=$version" >> "$GITHUB_ENV"
+
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: work/build

@@ -34,10 +34,16 @@ curl -fsSL https://github.com/rossnoah/grok-build-no-telemetry/releases/latest/d
 ## CI / releases
 
 CI applies the patches and runs `cargo check` plus the fork's tests on every
-push. Pushing a `v*` tag builds release binaries and publishes them:
+push. Pushing a `v*` tag builds release binaries and publishes them.
+
+Versioning: `v<upstream-version>+notel.<n>` — the upstream base must match the
+highest entry in `crates/codegen/xai-grok-shell/changelogs/` in the pinned
+source (the release workflow checks this), and `<n>` counts fork revisions on
+that base. The version has equal semver precedence with upstream's, which
+keeps the binary's minimum-version gate happy:
 
 ```sh
-git tag v0.1.0 && git push origin v0.1.0
+git tag 'v0.2.101+notel.1' && git push origin 'v0.2.101+notel.1'
 ```
 
 ## Build
